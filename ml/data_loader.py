@@ -39,7 +39,12 @@ def get_dataset_path() -> str:
     Returns:
         Path to the dataset directory
     """
-    # Check config file first
+    # Check Kaggle environment path first
+    kaggle_path = Path("/kaggle/input/cervical-cancer-largest-dataset-sipakmed")
+    if kaggle_path.exists():
+        return str(kaggle_path)
+    
+    # Check config file
     config_file = Path("config/dataset_path.txt")
     if config_file.exists():
         return config_file.read_text().strip()
@@ -77,18 +82,20 @@ def load_image_paths(dataset_path: str) -> Tuple[List[str], List[int], List[str]
     class_dirs = sorted([d for d in dataset_path.iterdir() 
                         if d.is_dir() and d.name.startswith("im_")])
     
-    # Create class to index mapping
-    class_to_idx = {cls_dir.name.replace("im_", ""): idx 
-                    for idx, cls_dir in enumerate(class_dirs)}
+    # Extract class names from directories (sorted alphabetically)
+    discovered_class_names = [cls_dir.name.replace("im_", "") for cls_dir in class_dirs]
     
-    print(f"📊 Found {len(class_dirs)} classes:")
+    # Create class to index mapping (alphabetical order)
+    class_to_idx = {cls_name: idx for idx, cls_name in enumerate(discovered_class_names)}
+    
+    print(f"📊 Found {len(class_dirs)} classes (alphabetical order):")
     
     for cls_dir in class_dirs:
         cls_name = cls_dir.name.replace("im_", "")
         cls_idx = class_to_idx[cls_name]
         
-        # Get all image files
-        images = list(cls_dir.glob("*.bmp")) + list(cls_dir.glob("*.jpg")) + list(cls_dir.glob("*.png"))
+        # Get all image files recursively
+        images = list(cls_dir.rglob("*.bmp")) + list(cls_dir.rglob("*.jpg")) + list(cls_dir.rglob("*.png"))
         
         print(f"   • {cls_name}: {len(images)} images (label: {cls_idx})")
         
@@ -97,8 +104,9 @@ def load_image_paths(dataset_path: str) -> Tuple[List[str], List[int], List[str]
             labels.append(cls_idx)
     
     print(f"\n✅ Total images loaded: {len(image_paths)}")
+    print(f"📋 Class order: {discovered_class_names}")
     
-    return image_paths, labels, CLASS_NAMES
+    return image_paths, labels, discovered_class_names
 
 
 def create_splits(image_paths: List[str], labels: List[int], 
@@ -150,38 +158,54 @@ def create_splits(image_paths: List[str], labels: List[int],
     }
 
 
-def preprocess_image(image_path: str, label: int) -> Tuple[tf.Tensor, tf.Tensor]:
+def load_image(image_path: str, label: int) -> Tuple[tf.Tensor, tf.Tensor]:
     """
-    Load and preprocess a single image.
+    Load and resize a single image (NO preprocessing yet).
     
     Args:
         image_path: Path to the image file
         label: Image label
         
     Returns:
-        Tuple of (preprocessed_image, label)
+        Tuple of (image, label)
     """
     # Read image file
     image = tf.io.read_file(image_path)
     image = tf.image.decode_image(image, channels=3, expand_animations=False)
     image = tf.image.resize(image, [IMG_SIZE, IMG_SIZE])
+    image = tf.cast(image, tf.float32)  # Keep in [0, 255] range for now
     
-    # Normalize to [0, 1]
-    image = tf.cast(image, tf.float32) / 255.0
+    return image, label
+
+
+def preprocess_image(image: tf.Tensor, label: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    """
+    Apply EfficientNet preprocessing to an image.
+    Must be called AFTER augmentation.
     
+    Args:
+        image: Input image tensor in [0, 255] range
+        label: Image label
+        
+    Returns:
+        Tuple of (preprocessed_image, label)
+    """
+    # EfficientNet preprocessing: expects [0, 255] range
+    image = tf.keras.applications.efficientnet.preprocess_input(image)
     return image, label
 
 
 def augment_image(image: tf.Tensor, label: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """
     Apply data augmentation to an image.
+    Applied BEFORE preprocessing, expects [0, 255] range.
     
     Args:
-        image: Input image tensor
+        image: Input image tensor in [0, 255] range
         label: Image label
         
     Returns:
-        Tuple of (augmented_image, label)
+        Tuple of (augmented_image, label) still in [0, 255] range
     """
     # Random horizontal flip
     image = tf.image.random_flip_left_right(image)
@@ -193,8 +217,8 @@ def augment_image(image: tf.Tensor, label: tf.Tensor) -> Tuple[tf.Tensor, tf.Ten
     if tf.random.uniform(()) > 0.5:
         image = tf.image.rot90(image, k=tf.random.uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
     
-    # Random brightness
-    image = tf.image.random_brightness(image, max_delta=0.2)
+    # Random brightness (for [0, 255] range)
+    image = tf.image.random_brightness(image, max_delta=32)
     
     # Random contrast
     image = tf.image.random_contrast(image, lower=0.8, upper=1.2)
@@ -205,8 +229,8 @@ def augment_image(image: tf.Tensor, label: tf.Tensor) -> Tuple[tf.Tensor, tf.Ten
     # Random hue
     image = tf.image.random_hue(image, max_delta=0.1)
     
-    # Clip values to [0, 1]
-    image = tf.clip_by_value(image, 0.0, 1.0)
+    # Clip values to valid range [0, 255]
+    image = tf.clip_by_value(image, 0.0, 255.0)
     
     return image, label
 
@@ -237,16 +261,19 @@ def create_dataset(image_paths: List[str], labels: List[int],
     if shuffle:
         dataset = dataset.shuffle(buffer_size=len(image_paths), seed=SEED)
     
-    # Load and preprocess images
-    dataset = dataset.map(preprocess_image, num_parallel_calls=AUTOTUNE)
+    # Load images (not preprocessed yet)
+    dataset = dataset.map(load_image, num_parallel_calls=AUTOTUNE)
     
-    # Cache after preprocessing
+    # Cache after loading (before augmentation)
     if cache:
         dataset = dataset.cache()
     
-    # Apply augmentation
+    # Apply augmentation BEFORE preprocessing
     if augment:
         dataset = dataset.map(augment_image, num_parallel_calls=AUTOTUNE)
+    
+    # Apply EfficientNet preprocessing (after augmentation)
+    dataset = dataset.map(preprocess_image, num_parallel_calls=AUTOTUNE)
     
     # Batch
     dataset = dataset.batch(batch_size)
@@ -257,12 +284,13 @@ def create_dataset(image_paths: List[str], labels: List[int],
     return dataset
 
 
-def get_class_weights(labels: List[int]) -> Dict[int, float]:
+def get_class_weights(labels: List[int], class_names: List[str]) -> Dict[int, float]:
     """
     Calculate class weights for handling class imbalance.
     
     Args:
         labels: List of all training labels
+        class_names: List of class names in index order
         
     Returns:
         Dictionary mapping class indices to weights
@@ -276,7 +304,7 @@ def get_class_weights(labels: List[int]) -> Dict[int, float]:
     
     print(f"\n⚖️  Class weights (for handling imbalance):")
     for cls, weight in weights.items():
-        print(f"   • {CLASS_NAMES[cls]}: {weight:.3f}")
+        print(f"   • {class_names[cls]}: {weight:.3f}")
     
     return weights
 
@@ -330,7 +358,7 @@ def main():
     splits = create_splits(image_paths, labels)
     
     # Calculate class weights
-    class_weights = get_class_weights(splits['train'][1])
+    class_weights = get_class_weights(splits['train'][1], class_names)
     
     # Create datasets
     print(f"\n🔧 Creating tf.data pipelines...")

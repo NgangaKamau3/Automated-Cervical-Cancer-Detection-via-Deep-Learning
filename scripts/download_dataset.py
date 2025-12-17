@@ -102,8 +102,8 @@ def verify_dataset_structure(dataset_path):
         if class_dir.is_dir() and class_dir.name.startswith("im_"):
             found_classes.append(class_dir.name)
             
-            # Count images in this class
-            image_files = list(class_dir.glob("*.bmp")) + list(class_dir.glob("*.jpg")) + list(class_dir.glob("*.png"))
+            # Count images in this class recursively
+            image_files = list(class_dir.rglob("*.bmp")) + list(class_dir.rglob("*.jpg")) + list(class_dir.rglob("*.png"))
             print(f"   ✓ {class_dir.name}: {len(image_files)} images")
     
     # Check if all expected classes are present

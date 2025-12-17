@@ -73,10 +73,11 @@ def create_efficientnet_model(
     x = layers.BatchNormalization(name='bn_2')(x)
     x = layers.Dropout(dropout_rate / 2, name='dropout_2')(x)
     
-    # Output layer
+    # Output layer (use float32 for numerical stability with mixed precision)
     outputs = layers.Dense(
         num_classes,
         activation='softmax',
+        dtype='float32',
         name='predictions'
     )(x)
     
@@ -154,10 +155,11 @@ def create_resnet_model(
     x = layers.BatchNormalization(name='bn_2')(x)
     x = layers.Dropout(dropout_rate / 2, name='dropout_2')(x)
     
-    # Output layer
+    # Output layer (use float32 for numerical stability with mixed precision)
     outputs = layers.Dense(
         num_classes,
         activation='softmax',
+        dtype='float32',
         name='predictions'
     )(x)
     

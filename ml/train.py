@@ -229,7 +229,7 @@ def setup_callbacks(config: TrainingConfig, phase: str = "initial") -> list:
         
         # Aggressive checkpointing for Colab free tier (every N epochs)
         keras.callbacks.ModelCheckpoint(
-            filepath=str(config.model_dir / f'checkpoint_{phase}_epoch_' + '{epoch:02d}.keras'),
+            filepath=str(config.model_dir / f'checkpoint_{phase}_epoch_{{epoch:02d}}.keras'),
             monitor='val_accuracy',
             save_freq=config.checkpoint_frequency * len(keras.backend.get_value(config.batch_size)) if hasattr(config, 'steps_per_epoch') else 'epoch',
             verbose=0,  # Less verbose to reduce log clutter
@@ -476,7 +476,7 @@ def train_model(config: TrainingConfig):
     splits = create_splits(image_paths, labels)
     
     # Calculate class weights
-    class_weights = get_class_weights(splits['train'][1]) if config.use_class_weights else None
+    class_weights = get_class_weights(splits['train'][1], class_names) if config.use_class_weights else None
     
     # Create tf.data pipelines
     print("\n🔧 Creating data pipelines...")
@@ -526,7 +526,7 @@ def train_model(config: TrainingConfig):
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=config.initial_lr),
         loss=loss_fn,
-        metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=2, name='top_2_accuracy')]
+        metrics=['accuracy', keras.metrics.SparseTopKCategoricalAccuracy(k=2, name='top_2_accuracy')]
     )
     
     print("\n📝 Model Summary:")
@@ -566,7 +566,7 @@ def train_model(config: TrainingConfig):
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=config.fine_tune_lr),
         loss=loss_fn,  # Use same loss function as Phase 1
-        metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=2, name='top_2_accuracy')]
+        metrics=['accuracy', keras.metrics.SparseTopKCategoricalAccuracy(k=2, name='top_2_accuracy')]
     )
     
     history_phase2 = model.fit(
