@@ -6,50 +6,64 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import pickle
-import urllib.request
+import json
+from pathlib import Path
+import time
 
 # ========================================
-# AUTO-DOWNLOAD MODEL + OPTIONAL FILES
+# MODEL CONFIGURATION
 # ========================================
 os.makedirs("models", exist_ok=True)
 
-MODEL_PATH = "models/sipakmed_best_2.keras"
-HISTORY_PATH = "models/history.pkl"
+# Try production model first, fallback to legacy
+PRODUCTION_MODEL_PATH = "models/export/saved_model"
+ALT_MODEL_PATH = "models/efficientnet_final.keras"
+LEGACY_MODEL_PATH = "models/sipakmed_best_2.keras"
+HISTORY_PATH = "models/training_history.pkl"
 CM_PATH = "models/confusion_matrix.pkl"
+METADATA_PATH = "models/export/model_metadata.json"
 
-# Model download (only runs once)
-if not os.path.exists(MODEL_PATH):
-    with st.spinner("First launch – downloading trained model (~4.5 MB)..."):
-        url = "https://github.com/Kamunyamike/Automated-Cervical-Cancer-Detection-via-Deep-Learning/releases/download/Trained_model_for_Streamlit_deployment/sipakmed_best_2.keras"
-        urllib.request.urlretrieve(url, MODEL_PATH)
-        st.success("Model downloaded successfully!")
+# Determine which model to use
+def find_model():
+    if os.path.exists(PRODUCTION_MODEL_PATH):
+        return PRODUCTION_MODEL_PATH, 224, "Production Model (EfficientNet)"
+    elif os.path.exists(ALT_MODEL_PATH):
+        return ALT_MODEL_PATH, 224, "Production Model (Keras)"
+    elif os.path.exists(LEGACY_MODEL_PATH):
+        return LEGACY_MODEL_PATH, 64, "Legacy Model"
+    else:
+        return None, None, None
 
-# Optional: download history & confusion matrix if you upload them later to the same release
-for file_path, asset_name in [
-    (HISTORY_PATH, "history.pkl"),
-    (CM_PATH, "confusion_matrix.pkl")
-]:
-    if not os.path.exists(file_path):
-        url = f"https://github.com/Kamunyamike/Automated-Cervical-Cancer-Detection-via-Deep-Learning/releases/download/Trained_model_for_Streamlit_deployment/{asset_name}"
-        try:
-            urllib.request.urlretrieve(url, file_path)
-        except:
-            pass  # Silently skip if not uploaded yet
+MODEL_PATH, IMG_SIZE, MODEL_NAME = find_model()
 
 # Load model with caching
 @st.cache_resource
 def load_model():
+    if MODEL_PATH is None:
+        st.error("❌ No model found! Please train a model first using: python ml/train.py")
+        st.stop()
     return tf.keras.models.load_model(MODEL_PATH)
 
-model = load_model()
+# Load metadata if available
+@st.cache_data
+def load_metadata():
+    if os.path.exists(METADATA_PATH):
+        with open(METADATA_PATH, 'r') as f:
+            return json.load(f)
+    return None
 
-CLASS_LABELS = ["Dyskeratotic", "Koilocytotic", "Metaplastic", "Parabasal", "Superficial-Intermediate"]
+model = load_model()
+metadata = load_metadata()
+
+CLASS_LABELS = metadata.get('class_names', [
+    "Dyskeratotic", "Koilocytotic", "Metaplastic", "Parabasal", "Superficial-Intermediate"
+]) if metadata else ["Dyskeratotic", "Koilocytotic", "Metaplastic", "Parabasal", "Superficial-Intermediate"]
 
 # ========================================
 # Helper Functions
 # ========================================
 def preprocess_image(img):
-    img = cv2.resize(img, (64, 64))
+    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
     img = img / 255.0
     return np.expand_dims(img, axis=0)
 
