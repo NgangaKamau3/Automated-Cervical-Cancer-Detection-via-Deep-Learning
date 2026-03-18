@@ -8,20 +8,23 @@ import os
 import pickle
 import json
 from pathlib import Path
-import time
 
 # ========================================
 # MODEL CONFIGURATION
 # ========================================
-os.makedirs("models", exist_ok=True)
+os.environ["KERAS_BACKEND"] = "tensorflow"
+os.environ["ITEX_VERBOSE"] = "1"
 
+import keras # This "locks in" the backend for the whole app
+
+BASE_DIR = Path(__file__).parent
+PRODUCTION_MODEL_PATH = str(BASE_DIR / "models" / "export" / "saved_model")
+ALT_MODEL_PATH = str(BASE_DIR / "models" / "efficientnet_final.keras")
+LEGACY_MODEL_PATH = str(BASE_DIR / "models" / "sipakmed_best_2.keras")
 # Try production model first, fallback to legacy
-PRODUCTION_MODEL_PATH = "models/export/saved_model"
-ALT_MODEL_PATH = "models/efficientnet_final.keras"
-LEGACY_MODEL_PATH = "models/sipakmed_best_2.keras"
-HISTORY_PATH = "models/training_history.pkl"
-CM_PATH = "models/confusion_matrix.pkl"
-METADATA_PATH = "models/export/model_metadata.json"
+HISTORY_PATH = str(BASE_DIR / "models" / "training_history.pkl")
+CM_PATH = str(BASE_DIR / "models" / "confusion_matrix.pkl")
+METADATA_PATH = str(BASE_DIR / "models" / "export/model_metadata.json")
 
 # Determine which model to use
 def find_model():
@@ -42,7 +45,7 @@ def load_model():
     if MODEL_PATH is None:
         st.error("❌ No model found! Please train a model first using: python ml/train.py")
         st.stop()
-    return tf.keras.models.load_model(MODEL_PATH)
+    return keras.models.load_model(MODEL_PATH)
 
 # Load metadata if available
 @st.cache_data
@@ -83,7 +86,7 @@ def grad_cam(model, img_array, layer_name="conv2d_15"):
     if target_layer is None:
         raise ValueError(f"Layer {layer_name} not found")
 
-    grad_model = tf.keras.models.Model(
+    grad_model = keras.models.Model(
         inputs=model.inputs,
         outputs=[target_layer.output, model.output]
     )

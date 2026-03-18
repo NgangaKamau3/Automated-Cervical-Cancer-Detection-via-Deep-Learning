@@ -10,12 +10,13 @@ import json
 from pathlib import Path
 from datetime import datetime
 import tensorflow as tf
-from tensorflow import keras
+import keras
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
 import pickle
+
+
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -37,19 +38,19 @@ if gpus:
     try:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
-        print(f"🎮 Found {len(gpus)} GPU(s) - Memory growth enabled")
+        print(f" Found {len(gpus)} GPU(s) - Memory growth enabled")
         print(f"   GPU Details: {tf.config.experimental.get_device_details(gpus[0])}")
     except RuntimeError as e:
-        print(f"⚠️  GPU configuration error: {e}")
+        print(f"  GPU configuration error: {e}")
 else:
-    print("💻 No GPU found - Using CPU")
+    print("No GPU found - Using CPU")
 
 # Enable mixed precision training for T4 GPU (1.5-2x speedup)
 try:
     policy = keras.mixed_precision.Policy('mixed_float16')
     keras.mixed_precision.set_global_policy(policy)
     print(f"✅ Mixed precision FP16 enabled: {policy.name}")
-    print(f"   Expected speedup on T4 GPU: 1.5-2x")
+    print(" Expected speedup on T4 GPU: 1.5-2x")
 except:
     print("⚠️  Mixed precision not available, using default float32")
 
@@ -397,7 +398,7 @@ def evaluate_model(model, test_dataset, class_names, save_dir: Path):
     }
     
     print("\nLiterature Benchmark vs Our Model:")
-    print(f"  Metric          | Benchmark | Our Model  | Status")
+    print("  Metric          | Benchmark | Our Model  | Status")
     print(f"  {'-'*15} | {'-'*9} | {'-'*10} | {'-'*6}")
     
     sens = overall['macro_sensitivity']
@@ -611,14 +612,14 @@ def train_model(config: TrainingConfig):
     print("\n" + "=" * 60)
     print("✅ Training Complete!")
     print("=" * 60)
-    print(f"\n📊 Final Results:")
+    print("\n Final Results:")
     print(f"   • Test Accuracy: {metrics['accuracy'] * 100:.2f}%")
     print(f"   • Model saved: {final_model_path}")
-    print(f"   • Total training time: Phase 1 + Phase 2")
-    print(f"\n💡 Next steps:")
-    print(f"   1. Review training plots in: {config.model_dir}")
-    print(f"   2. Test the model: python ml/export.py")
-    print(f"   3. Deploy: python services/inference/main.py")
+    print("   • Total training time: Phase 1 + Phase 2")
+    print("\n Next steps:")
+    print("   1. Review training plots in: {config.model_dir}")
+    print("   2. Test the model: python ml/export.py")
+    print("   3. Deploy: python services/inference/main.py")
 
 
 def main():

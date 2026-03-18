@@ -146,7 +146,7 @@ def create_splits(image_paths: List[str], labels: List[int],
         random_state=random_state
     )
     
-    print(f"\n📊 Dataset splits:")
+    print("\n📊 Dataset splits:")
     print(f"   • Train: {len(X_train)} images ({len(X_train)/len(image_paths)*100:.1f}%)")
     print(f"   • Val:   {len(X_val)} images ({len(X_val)/len(image_paths)*100:.1f}%)")
     print(f"   • Test:  {len(X_test)} images ({len(X_test)/len(image_paths)*100:.1f}%)")
@@ -302,7 +302,7 @@ def get_class_weights(labels: List[int], class_names: List[str]) -> Dict[int, fl
     weights = {int(cls): total / (len(unique) * count) 
                for cls, count in zip(unique, counts)}
     
-    print(f"\n⚖️  Class weights (for handling imbalance):")
+    print("\n  Class weights (for handling imbalance):")
     for cls, weight in weights.items():
         print(f"   • {class_names[cls]}: {weight:.3f}")
     
@@ -361,7 +361,7 @@ def main():
     class_weights = get_class_weights(splits['train'][1], class_names)
     
     # Create datasets
-    print(f"\n🔧 Creating tf.data pipelines...")
+    print("\n🔧 Creating tf.data pipelines...")
     train_dataset = create_dataset(
         splits['train'][0], splits['train'][1],
         batch_size=BATCH_SIZE,
@@ -383,10 +383,10 @@ def main():
         shuffle=False
     )
     
-    print(f"✅ Datasets created successfully!")
+    print(" Datasets created successfully!")
     
     # Test loading a batch
-    print(f"\n🧪 Testing data loading...")
+    print("\n Testing data loading...")
     for images, labels in train_dataset.take(1):
         print(f"   • Batch shape: {images.shape}")
         print(f"   • Labels shape: {labels.shape}")
@@ -397,7 +397,7 @@ def main():
     save_dataset_info(splits, class_names)
     
     print("\n" + "=" * 60)
-    print("✅ Data loader ready!")
+    print("Data loader ready!")
     print("=" * 60)
 
 

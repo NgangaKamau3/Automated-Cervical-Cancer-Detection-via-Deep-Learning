@@ -5,8 +5,11 @@ uvicorn[standard]
 python-multipart==0.0.12
 
 # Machine Learning
-tensorflow==2.19.0
-numpy>=2.0.0,<2.1
+intel-extension-for-tensorflow
+tensorflow==2.15.0
+# Downgraded to satisfy TensorFlow 2.15.0 requirements
+numpy>=1.23.5,<2.0.0
+
 scikit-learn>=1.6.0
 
 # Image Processing

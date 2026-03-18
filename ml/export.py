@@ -235,19 +235,19 @@ def main():
     print("\n" + "=" * 60)
     print("✅ Export Complete!")
     print("=" * 60)
-    print(f"\n📊 Exported models:")
+    print("\n Exported models:")
     print(f"   • SavedModel: {saved_model_path}")
     if args.tflite:
         print(f"   • TFLite: {tflite_path}")
     print(f"   • Metadata: {export_dir}/model_metadata.json")
     
     if metadata.get('performance', {}).get('test_accuracy'):
-        print(f"\n📈 Model Performance:")
+        print("\n Model Performance:")
         print(f"   • Test Accuracy: {metadata['performance']['test_accuracy'] * 100:.2f}%")
     
-    print(f"\n💡 Next steps:")
-    print(f"   1. Test the exported model in the inference service")
-    print(f"   2. Deploy using Docker: docker build -t cervical-cancer-detection .")
+    print("\n Next steps:")
+    print(" 1. Test the exported model in the inference service")
+    print(" 2. Deploy using Docker: docker build -t cervical-cancer-detection .")
 
 
 if __name__ == "__main__":

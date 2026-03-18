@@ -2,10 +2,6 @@
 
 Complete API documentation for the Cervical Cancer Detection inference service.
 
-## Base URL
-
-- **Development**: `http://localhost:8000`
-- **Production**: `https://api.cervical-cancer.example.com`
 
 ## Authentication
 

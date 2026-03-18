@@ -4,8 +4,8 @@ Defines the cervical cancer classification model using transfer learning.
 """
 
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers, models
+import keras
+from keras import layers
 from typing import Tuple, Optional
 
 
@@ -84,7 +84,7 @@ def create_efficientnet_model(
     # Create model
     model = keras.Model(inputs=inputs, outputs=outputs, name='EfficientNetB3_CervicalCancer')
     
-    print(f"✅ Created EfficientNetB3 model")
+    print("Created EfficientNetB3 model")
     print(f"   • Input shape: {input_shape}")
     print(f"   • Output classes: {num_classes}")
     print(f"   • Dropout rate: {dropout_rate}")
@@ -166,7 +166,7 @@ def create_resnet_model(
     # Create model
     model = keras.Model(inputs=inputs, outputs=outputs, name='ResNet50V2_CervicalCancer')
     
-    print(f"✅ Created ResNet50V2 model")
+    print("Created ResNet50V2 model")
     print(f"   • Input shape: {input_shape}")
     print(f"   • Output classes: {num_classes}")
     print(f"   • Dropout rate: {dropout_rate}")
@@ -236,14 +236,14 @@ def main():
     model, base = create_efficientnet_model()
     model.summary()
     
-    print(f"\n📊 Model statistics:")
+    print("\n Model statistics:")
     print(f"   • Total parameters: {model.count_params():,}")
     print(f"   • Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}")
     
     # Test with dummy input
     dummy_input = tf.random.normal((1, 224, 224, 3))
     output = model(dummy_input, training=False)
-    print(f"\n🧪 Test prediction:")
+    print("\n Test prediction:")
     print(f"   • Input shape: {dummy_input.shape}")
     print(f"   • Output shape: {output.shape}")
     print(f"   • Output sum: {tf.reduce_sum(output).numpy():.6f} (should be ~1.0)")
